@@ -90,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Notify Results
     needs: [test-qa, test-prod]
-    if: always() && (github.event_name == 'schedule' || github.ref == 'refs/heads/main')
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/main'
     steps:
     - name: Check test results
       run: |
