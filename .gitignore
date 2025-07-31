@@ -90,5 +90,4 @@ temp/
 .cache/
 
 # Lock files (choose one)
-package-lock.json
 # yarn.lock
