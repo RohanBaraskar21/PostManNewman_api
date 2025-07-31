@@ -1,0 +1,44 @@
+{
+  "name": "postman-automation-framework",
+  "version": "1.0.0",
+  "description": "Comprehensive Postman automation framework with Newman and GitHub Actions integration",
+  "main": "index.js",
+  "scripts": {
+    "test": "newman run collections/api-tests.postman_collection.json -e environments/dev.postman_environment.json --reporters cli,html --reporter-html-export reports/newman-report.html",
+    "test:dev": "newman run collections/api-tests.postman_collection.json -e environments/dev.postman_environment.json --reporters cli,htmlextra,json,junit --reporter-htmlextra-export reports/dev-report.html --reporter-json-export reports/dev-results.json --reporter-junit-export reports/dev-results.xml",
+    "test:qa": "newman run collections/api-tests.postman_collection.json -e environments/qa.postman_environment.json --reporters cli,htmlextra,json,junit --reporter-htmlextra-export reports/qa-report.html --reporter-json-export reports/qa-results.json --reporter-junit-export reports/qa-results.xml",
+    "test:staging": "newman run collections/api-tests.postman_collection.json -e environments/staging.postman_environment.json --reporters cli,htmlextra,json,junit --reporter-htmlextra-export reports/staging-report.html --reporter-json-export reports/staging-results.json --reporter-junit-export reports/staging-results.xml",
+    "test:prod": "newman run collections/api-tests.postman_collection.json -e environments/prod.postman_environment.json --reporters cli,htmlextra,json,junit --reporter-htmlextra-export reports/prod-report.html --reporter-json-export reports/prod-results.json --reporter-junit-export reports/prod-results.xml",
+    "test:all": "npm run test:dev && npm run test:qa && npm run test:staging",
+    "install:newman": "npm install -g newman",
+    "install:newman-html": "npm install -g newman-reporter-html",
+    "setup": "npm install && npm run install:newman && npm run install:newman-html",
+    "clean": "rimraf reports/*.html reports/*.json",
+    "validate:collections": "node scripts/validate-collections.js",
+    "validate:environments": "node scripts/validate-environments.js"
+  },
+  "keywords": [
+    "postman",
+    "newman",
+    "api-testing",
+    "automation",
+    "ci-cd",
+    "github-actions"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "newman": "^6.0.0",
+    "newman-reporter-htmlextra": "^1.23.1",
+    "newman-reporter-junitfull": "^1.1.1"
+  },
+  "devDependencies": {
+    "chalk": "^4.1.2",
+    "fs-extra": "^11.0.0",
+    "rimraf": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
+  }
+}

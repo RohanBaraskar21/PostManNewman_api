@@ -1,0 +1,101 @@
+name: Manual Test Trigger
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - qa
+        - staging
+        - prod
+      collection:
+        description: 'Collection to run'
+        required: true
+        default: 'api-tests'
+        type: choice
+        options:
+        - api-tests
+        - health-check
+      verbose:
+        description: 'Verbose output'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  manual-test:
+    runs-on: ubuntu-latest
+    name: Manual Test - ${{ github.event.inputs.environment }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        npm install -g newman
+        npm install -g newman-reporter-htmlextra
+        
+    - name: Create reports directory
+      run: mkdir -p reports
+      
+    - name: Set collection file
+      id: collection
+      run: |
+        if [ "${{ github.event.inputs.collection }}" == "health-check" ]; then
+          echo "file=health-check.postman_collection.json" >> $GITHUB_OUTPUT
+        else
+          echo "file=api-tests.postman_collection.json" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Set verbose flag
+      id: verbose
+      run: |
+        if [ "${{ github.event.inputs.verbose }}" == "true" ]; then
+          echo "flag=--verbose" >> $GITHUB_OUTPUT
+        else
+          echo "flag=" >> $GITHUB_OUTPUT
+        fi
+      
+    - name: Run Tests - ${{ github.event.inputs.environment }}
+      run: |
+        newman run collections/${{ steps.collection.outputs.file }} \
+          -e environments/${{ github.event.inputs.environment }}.postman_environment.json \
+          --reporters cli,htmlextra,json \
+          --reporter-htmlextra-export reports/${{ github.event.inputs.environment }}-manual-report.html \
+          --reporter-json-export reports/${{ github.event.inputs.environment }}-manual-results.json \
+          --reporter-htmlextra-title "Manual Test - ${{ github.event.inputs.environment }} Environment" \
+          --reporter-htmlextra-logs \
+          ${{ steps.verbose.outputs.flag }}
+      continue-on-error: true
+      
+    - name: Upload Test Reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: manual-test-reports-${{ github.event.inputs.environment }}
+        path: reports/
+        retention-days: 7
+        
+    - name: Comment on workflow run
+      if: always()
+      run: |
+        echo "### Manual Test Results 🧪" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Collection:** ${{ github.event.inputs.collection }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Check the artifacts for detailed reports." >> $GITHUB_STEP_SUMMARY

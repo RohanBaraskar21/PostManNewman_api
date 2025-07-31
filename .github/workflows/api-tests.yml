@@ -1,0 +1,102 @@
+name: API Tests - Automated
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+
+jobs:
+
+  test-qa:
+    runs-on: ubuntu-latest
+    name: Test QA Environment
+    if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    - name: Install dependencies
+      run: |
+        npm ci
+        npm install -g newman
+        npm install -g newman-reporter-htmlextra
+    - name: Create reports directory
+      run: mkdir -p reports
+    - name: Run QA Tests
+      run: |
+        newman run collections/api-tests.postman_collection.json \
+          -e environments/qa.postman_environment.json \
+          --reporters cli,htmlextra,json \
+          --reporter-htmlextra-export reports/qa-report.html \
+          --reporter-json-export reports/qa-results.json \
+          --reporter-htmlextra-title "QA Environment Test Report" \
+          --reporter-htmlextra-logs
+      continue-on-error: true
+    - name: Upload QA Test Reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: qa-test-reports
+        path: reports/
+        retention-days: 30
+
+  test-prod:
+    runs-on: ubuntu-latest
+    name: Test Production Environment
+    needs: test-qa
+    if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    - name: Install dependencies
+      run: |
+        npm ci
+        npm install -g newman
+        npm install -g newman-reporter-htmlextra
+    - name: Create reports directory
+      run: mkdir -p reports
+    - name: Run Production Tests
+      run: |
+        newman run collections/api-tests.postman_collection.json \
+          -e environments/prod.postman_environment.json \
+          --reporters cli,htmlextra,json \
+          --reporter-htmlextra-export reports/prod-report.html \
+          --reporter-json-export reports/prod-results.json \
+          --reporter-htmlextra-title "Production Environment Test Report" \
+          --reporter-htmlextra-logs
+      continue-on-error: true
+    - name: Upload Prod Test Reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: prod-test-reports
+        path: reports/
+        retention-days: 30
+
+  notify:
+    runs-on: ubuntu-latest
+    name: Notify Results
+    needs: [test-qa, test-prod]
+    if: always() && (github.event_name == 'schedule' || github.ref == 'refs/heads/main')
+    steps:
+    - name: Check test results
+      run: |
+        echo "QA Tests: ${{ needs.test-qa.result }}"
+        echo "Prod Tests: ${{ needs.test-prod.result }}"
+        if [[ "${{ needs.test-qa.result }}" == "failure" || "${{ needs.test-prod.result }}" == "failure" ]]; then
+          echo "Some tests failed! Check the reports for details."
+          exit 1
+        fi
