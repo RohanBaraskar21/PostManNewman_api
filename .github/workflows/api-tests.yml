@@ -39,10 +39,10 @@ jobs:
           --reporter-json-export reports/qa-results.json \
           --reporter-htmlextra-title "QA Environment Test Report" \
           --reporter-htmlextra-logs
-      continue-on-error: true
     - name: Upload QA Test Reports
       uses: actions/upload-artifact@v4
       if: always()
+      continue-on-error: true
       with:
         name: qa-test-reports
         path: reports/
@@ -77,10 +77,10 @@ jobs:
           --reporter-json-export reports/prod-results.json \
           --reporter-htmlextra-title "Production Environment Test Report" \
           --reporter-htmlextra-logs
-      continue-on-error: true
     - name: Upload Prod Test Reports
       uses: actions/upload-artifact@v4
       if: always()
+      continue-on-error: true
       with:
         name: prod-test-reports
         path: reports/
